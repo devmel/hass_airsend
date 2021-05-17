@@ -1,0 +1,10 @@
+nbproject/
+plugins
+sftp-config.json
+.project
+.DS_Store
+Thumbs.db
+*.pyc
+docs/_site/
+docs/Gemfile.lock
+docs/.sass-cache/

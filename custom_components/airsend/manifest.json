@@ -1,0 +1,11 @@
+{
+  "domain": "airsend",
+  "name": "AirSend",
+  "documentation": "https://github.com/devmel/hass_airsend",
+  "dependencies": [],
+  "config_flow": false,
+  "codeowners": ["@devmel"],
+  "requirements": [],
+  "version": "3.4",
+  "iot_class": "cloud_polling"
+}

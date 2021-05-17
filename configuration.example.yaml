@@ -1,0 +1,21 @@
+
+# Configure a default setup of Home Assistant (frontend, api, etc)
+default_config:
+
+airsend:
+  devices:
+    lumière:
+      id: 9000
+      type: 4098
+      apiKey: !secret asKey
+    prise somfy:
+      id: 9010
+      type: 4097
+      apiKey: !secret asKey
+
+
+group: !include groups.yaml
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
