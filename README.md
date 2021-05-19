@@ -1,8 +1,4 @@
-[![License][license-shield]](LICENSE)
-
-[![hacs][hacsbadge]](hacs)
-
-<img align="left" width="80" height="80" src="https://raw.githubusercontent.com/devmel/hass_airsend/master/icons/icon.png" alt="App icon">
+<img align="left" width="80" src="https://raw.githubusercontent.com/devmel/hass_airsend/master/icons/icon.png" alt="App icon">
 
 # AirSend Home Assistant
 
@@ -10,8 +6,10 @@ Component for sending radio commands (433-434Mhz) through the AirSend device.
 
 ## Installation
 
-1. To use this plugin, copy the `airsend` folder into your [custom_components folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations).
-2. Add `airsend:` to your HA configuration (see configuration.example.yaml).
+1. Add `airsend:` to your HA configuration (see configuration below).
+2. Into the terminal, run `wget -q -O - https://github.com/devmel/hass_airsend/install | bash -`
+ OR copy the `airsend` folder into your [custom_components folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations).
+3. Restart Home Assistant
 
 ## Configuration 
 
