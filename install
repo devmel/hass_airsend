@@ -1,5 +1,5 @@
 #!/bin/bash
-# wget -q -O - https://github.com/devmel/hass_airsend/install | bash -
+# wget -q -O - https://raw.githubusercontent.com/devmel/hass_airsend/master/install | bash -
 set -e
 
 RED_COLOR='\033[0;31m'

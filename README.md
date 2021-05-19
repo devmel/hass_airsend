@@ -7,7 +7,7 @@ Component for sending radio commands (433-434Mhz) through the AirSend device.
 ## Installation
 
 1. Add `airsend:` to your HA configuration (see configuration below).
-2. Into the terminal, run `wget -q -O - https://github.com/devmel/hass_airsend/install | bash -`
+2. Into the terminal, run `wget -q -O - https://raw.githubusercontent.com/devmel/hass_airsend/master/install | bash -`
  OR copy the `airsend` folder into your [custom_components folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations).
 3. Restart Home Assistant
 
