@@ -4,14 +4,16 @@ default_config:
 
 airsend:
   devices:
-    lumière:
+    volet cuisine:
       id: 9000
       type: 4098
-      apiKey: !secret asKey
+      apiKey: !secret apiKey
     prise somfy:
-      id: 9010
       type: 4097
-      apiKey: !secret asKey
+      spurl: !secret spurl
+      channel:
+         id: 13920
+         source: 19259
 
 
 group: !include groups.yaml

@@ -1,10 +1,15 @@
 """AirSend switches."""
 import logging
+import json
 from typing import Any
-from requests import get
+from requests import get, post
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.entity import async_generate_entity_id
+from homeassistant.components.hassio import (
+    async_get_addon_discovery_info,
+    async_get_addon_info,
+)
 from homeassistant.components.switch import (
     SwitchEntity,
 )
@@ -15,24 +20,62 @@ from . import (
 _LOGGER = logging.getLogger(DOMAIN)
 
 async def async_setup_platform(hass : HomeAssistant, config : ConfigType, async_add_entities, discovery_info=None):
+    addons_url = ""
+    try:
+        addon_info: dict = await async_get_addon_info(hass, 'local_airsend')
+        ip = addon_info["ip_address"]
+        if ip:
+            addons_url = "http://"+str(ip)+":33863/"
+        # _LOGGER.warning("Addon '%s'", addon_info)
+    except:
+        pass
     if discovery_info is None:
         return
     for name, options in discovery_info.items():
         if options['type'] == 4096 or options['type'] == 4097:
-           entity = AirSendSwitch(hass, name, options['id'], options['type'], options['apiKey'])
-           async_add_entities([entity])
+            id = ""
+            apiKey = ""
+            spurl = ""
+            channel = {}
+            note = {"method":1,"type":0,"value": "TOGGLE"}
+            try:
+                id = options['id']
+            except KeyError:
+                pass
+            try:
+                apiKey = options['apiKey']
+            except KeyError:
+                pass
+            try:
+                spurl = options['spurl']
+            except KeyError:
+                pass
+            try:
+                channel = options['channel']
+            except KeyError:
+                pass
+            try:
+                note = options['note']
+            except KeyError:
+                pass
+            entity = AirSendSwitch(hass, name, id, options['type'], apiKey, addons_url, spurl, channel, note)
+            async_add_entities([entity])
     return
 
 
 class AirSendSwitch(SwitchEntity):
     """Representation of an AirSend Switch."""
 
-    def __init__(self, hass : HomeAssistant, name : str, id: str, type : int, apikey : str):
+    def __init__(self, hass : HomeAssistant, name : str, id: str, type : int, apikey : str, addons_url : str, spurl : str, channel : dict, note : dict):
         """Initialize a switch or light device."""
         self._name = name
         self._id = id
         self._type = type
         self._apikey = apikey
+        self._addons_url = addons_url
+        self._spurl = spurl
+        self._channel = channel
+        self._note = note
         uname = DOMAIN+name
         self._unique_id = "_".join(x for x in uname)
         self._state = False
@@ -72,27 +115,48 @@ class AirSendSwitch(SwitchEntity):
 
     def turn_on(self, **kwargs: Any) -> None:
         """Turn the device on."""
-        command = "1" if self._type == 4097 else "6"
+        command = "6"
+        note = self._note
+        if self._type == 4097:
+            command = "1"
+            note = {"method":1,"type":0,"value": "ON"}
         url = "https://airsend.cloud/device/"+str(self._id)+"/command/"+command+"/"
-        self._call_cloud(url, True)
+        payload = '{"wait": true, "channel":'+json.dumps(self._channel)+', "thingnotes":{"notes":['+json.dumps(note)+']}}'
+        self._action(url, payload, True)
 
     def turn_off(self, **kwargs: Any) -> None:
         """Turn the device off."""
-        command = "0" if self._type == 4097 else "6"
+        command = "6"
+        note = self._note
+        if self._type == 4097:
+            command = "0"
+            note = {"method":1,"type":0,"value": "OFF"}
         url = "https://airsend.cloud/device/"+str(self._id)+"/command/"+command+"/"
-        self._call_cloud(url, False)
+        payload = '{"wait": true, "channel":'+json.dumps(self._channel)+', "thingnotes":{"notes":['+json.dumps(note)+']}}'
+        self._action(url, payload, False)
 
-    def _call_cloud(self, url : str, new_state : bool):
-        headers = {"Authorization": "Bearer "+self._apikey, "content-type": "application/json", "User-Agent": "hass_airsend"}
+    def _action(self, cloud_url : str, payload : str, new_state : bool):
         status_code = 404
-        try:
-            response = get(url, headers=headers)
-            status_code = response.status_code
-        except:
-            pass
+        if self._addons_url and self._spurl:
+            headers = {"Authorization": "Bearer "+self._spurl, "content-type": "application/json", "User-Agent": "hass_airsend"}
+            try:
+                response = post(self._addons_url+"airsend/transfer", headers=headers, data=payload, timeout=6)
+                status_code = 500
+                jdata = json.loads(response.text)
+                if jdata["type"] < 0x100:
+                    status_code = response.status_code
+            except:
+                pass
+        if status_code != 200 and self._apikey and cloud_url:
+            headers = {"Authorization": "Bearer "+self._apikey, "content-type": "application/json", "User-Agent": "hass_airsend"}
+            try:
+                response = get(cloud_url, headers=headers, timeout=10)
+                status_code = response.status_code
+            except:
+                pass
         if status_code == 200:
             self._state = new_state
             self.schedule_update_ha_state()
         else:
-            _LOGGER.error("airsend.cloud error : "+str(status_code))
-            raise Exception("airsend.cloud error : "+str(status_code)) 
+            _LOGGER.error("action error : "+str(status_code))
+            raise Exception("action error : "+str(status_code)) 

@@ -2,7 +2,7 @@
   "domain": "airsend",
   "name": "AirSend",
   "documentation": "https://github.com/devmel/hass_airsend",
-  "dependencies": [],
+  "dependencies": ["http"],
   "config_flow": false,
   "codeowners": ["@devmel"],
   "requirements": [],
