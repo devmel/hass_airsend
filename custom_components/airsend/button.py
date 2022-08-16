@@ -1,4 +1,4 @@
-"""AirSend switches."""
+"""AirSend buttons."""
 import logging
 import json
 from typing import Any
@@ -10,8 +10,8 @@ from homeassistant.components.hassio import (
     async_get_addon_discovery_info,
     async_get_addon_info,
 )
-from homeassistant.components.switch import (
-    SwitchEntity,
+from homeassistant.components.button import (
+    ButtonEntity,
 )
 from . import (
     DOMAIN,
@@ -32,7 +32,7 @@ async def async_setup_platform(hass : HomeAssistant, config : ConfigType, async_
     if discovery_info is None:
         return
     for name, options in discovery_info.items():
-        if options['type'] == 4097:
+        if options['type'] == 4096 :
             id = ""
             apiKey = ""
             spurl = ""
@@ -58,16 +58,16 @@ async def async_setup_platform(hass : HomeAssistant, config : ConfigType, async_
                 note = options['note']
             except KeyError:
                 pass
-            entity = AirSendSwitch(hass, name, id, options['type'], apiKey, addons_url, spurl, channel, note)
+            entity = AirSendButton(hass, name, id, options['type'], apiKey, addons_url, spurl, channel, note)
             async_add_entities([entity])
     return
 
 
-class AirSendSwitch(SwitchEntity):
-    """Representation of an AirSend Switch."""
+class AirSendButton(ButtonEntity):
+    """Representation of an AirSend Button."""
 
     def __init__(self, hass : HomeAssistant, name : str, id: str, type : int, apikey : str, addons_url : str, spurl : str, channel : dict, note : dict):
-        """Initialize a switch or light device."""
+        """Initialize a button."""
         self._name = name
         self._id = id
         self._type = type
@@ -109,25 +109,14 @@ class AirSendSwitch(SwitchEntity):
         """Return true if unable to access real state of entity."""
         return True
 
-    @property
-    def is_on(self):
-        return self._state
-
-    def turn_on(self, **kwargs: Any) -> None:
-        """Turn the device on."""
-        command = "1"
-        note = {"method":1,"type":0,"value": "ON"}
-        url = "https://airsend.cloud/device/"+str(self._id)+"/command/"+command+"/"
-        payload = '{"wait": true, "channel":'+json.dumps(self._channel)+', "thingnotes":{"notes":['+json.dumps(note)+']}}'
+    def press(self) -> None:
+        """Handle the button press."""
+        command = "6"
+        note = self._note
+        url = "https://airsend.cloud/device/" + str(self._id) + "/command/" + command + "/"
+        payload = '{"wait": true, "channel":' + json.dumps(self._channel) + ', "thingnotes":{"notes":[' + json.dumps(
+            note) + ']}}'
         self._action(url, payload, True)
-
-    def turn_off(self, **kwargs: Any) -> None:
-        """Turn the device off."""
-        command = "0"
-        note = {"method":1,"type":0,"value": "OFF"}
-        url = "https://airsend.cloud/device/"+str(self._id)+"/command/"+command+"/"
-        payload = '{"wait": true, "channel":'+json.dumps(self._channel)+', "thingnotes":{"notes":['+json.dumps(note)+']}}'
-        self._action(url, payload, False)
 
     def _action(self, cloud_url : str, payload : str, new_state : bool):
         status_code = 404
@@ -153,4 +142,4 @@ class AirSendSwitch(SwitchEntity):
             self.schedule_update_ha_state()
         else:
             _LOGGER.error("action error : "+str(status_code))
-            raise Exception("action error : "+str(status_code)) 
+            raise Exception("action error : "+str(status_code))

@@ -7,7 +7,7 @@ from homeassistant.const import (
 )
 
 DOMAIN = "airsend"
-AS_TYPE = ['switch', 'cover']
+AS_TYPE = ['switch', 'cover', 'button']
 
 async def async_setup(hass : HomeAssistant, config : ConfigType):
     """Set up the AirSend component."""
