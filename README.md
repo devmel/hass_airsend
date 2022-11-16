@@ -2,15 +2,16 @@
 
 # AirSend Home Assistant
 
-Component for sending radio commands (433-434Mhz) through the AirSend device.
+Component for sending radio commands through the AirSend (RF433) or AirSend duo (RF433 & RF868).
 
 ## Installation
 
-1. Add `airsend:` to your HA configuration (see configuration below).
-2. Into the terminal, run `wget -q -O - https://raw.githubusercontent.com/devmel/hass_airsend/master/install | bash -`
+1. Into the terminal, run `wget -q -O - https://raw.githubusercontent.com/devmel/hass_airsend/master/install | bash -`
  OR copy the `airsend` folder into your [custom_components folder](https://developers.home-assistant.io/docs/creating_integration_file_structure/#where-home-assistant-looks-for-integrations).
-3. To allow a local LAN connection please install and start [hass_airsend-addon](https://github.com/devmel/hass_airsend-addon).
-4. Restart Home Assistant
+2. To allow a local LAN connection please install and start [hass_airsend-addon](https://github.com/devmel/hass_airsend-addon).
+3. Restart Home Assistant
+4. Add `airsend:` to your HA configuration (see configuration below).
+5. Restart Home Assistant
 
 ## Configuration 
 
