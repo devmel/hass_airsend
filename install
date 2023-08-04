@@ -56,7 +56,7 @@ if [ -n "$haPath" ]; then
     cd "$haPath/custom_components" || error "Could not change path to $haPath/custom_components"
 
     info "Downloading AirSend Home Assistant Component"
-    wget "https://github.com/devmel/hass_airsend/releases/download/1.0/hass_airsend.zip"
+    wget "https://github.com/devmel/hass_airsend/releases/download/latest/hass_airsend.zip"
 
     if [ -d "$haPath/custom_components/hass_airsend" ]; then
         warn "airsend directory already exist, cleaning up..."

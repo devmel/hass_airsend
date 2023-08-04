@@ -1,6 +1,7 @@
 """AirSend device."""
 import logging
 import json
+import hashlib
 from requests import get, post, exceptions
 from . import DOMAIN
 
@@ -23,6 +24,7 @@ class Device:
         self._rtype = None
         self._apikey = None
         self._spurl = None
+        self._wait = False
         self._channel = {}
         self._note = None
         try:
@@ -39,6 +41,10 @@ class Device:
             pass
         try:
             self._spurl = options["spurl"]
+        except KeyError:
+            pass
+        try:
+            self._wait = eval(str(options["wait"]))
         except KeyError:
             pass
         try:
@@ -83,10 +89,15 @@ class Device:
             return True
         return False
 
-    def transfer(self, note) -> bool:
+    def transfer(self, note, entity_id = None) -> bool:
         """Send a command."""
         status_code = 404
-        if self._serviceurl and self._spurl:
+        ret = False
+        wait = 'false, "callback":"http://127.0.0.1/"'
+        if self._wait == True:
+            wait = 'true'
+        if self._serviceurl and self._spurl and entity_id is not None:
+            uid = hashlib.sha256(entity_id.encode('utf-8')).hexdigest()[:12]
             jnote = json.dumps(note)
             if (
                 self._note is not None
@@ -101,9 +112,9 @@ class Device:
             ):
                 jnote = json.dumps(self._note)
             payload = (
-                '{"wait": true, "channel":'
+                '{"wait": '+wait+', "channel":'
                 + json.dumps(self._channel)
-                + ', "thingnotes":{"notes":['
+                + ', "thingnotes":{"uid":"0x'+uid+'", "notes":['
                 + jnote
                 + "]}}"
             )
@@ -119,9 +130,14 @@ class Device:
                     data=payload,
                     timeout=6,
                 )
-                status_code = 500
-                jdata = json.loads(response.text)
-                if jdata["type"] < 0x100:
+                if self._wait == True:
+                    ret = True
+                    status_code = 500
+                    jdata = json.loads(response.text)
+                    if jdata["type"] < 0x100:
+                        status_code = response.status_code
+                else:
+                    ret = None
                     status_code = response.status_code
             except exceptions.RequestException:
                 pass
@@ -164,9 +180,10 @@ class Device:
             try:
                 response = get(cloud_url, headers=headers, timeout=10)
                 status_code = response.status_code
+                ret = True
             except exceptions.RequestException:
                 pass
         if status_code == 200:
-            return True
+            return ret
         _LOGGER.error("Transfer error '%s' : '%s'", self.name, status_code)
         raise Exception("Transfer error " + self.name + " : " + str(status_code))

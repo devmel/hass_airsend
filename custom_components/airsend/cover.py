@@ -6,7 +6,6 @@ from .device import Device
 from homeassistant.components.cover import CoverEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
-
 from homeassistant.const import CONF_DEVICES, CONF_INTERNAL_URL
 
 from . import DOMAIN
@@ -75,12 +74,12 @@ class AirSendCover(CoverEntity):
     @property
     def is_closed(self):
         """Return if the cover is closed."""
-        return not self._closed
+        return self._closed
 
     def open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
         note = {"method": 1, "type": 0, "value": "UP"}
-        if self._device.transfer(note):
+        if self._device.transfer(note, self.entity_id) == True:
             self._closed = False
             if self._device.is_cover_with_position:
                 self._attr_current_cover_position = 100
@@ -89,7 +88,7 @@ class AirSendCover(CoverEntity):
     def close_cover(self, **kwargs: Any) -> None:
         """Close cover."""
         note = {"method": 1, "type": 0, "value": "DOWN"}
-        if self._device.transfer(note):
+        if self._device.transfer(note, self.entity_id) == True:
             self._closed = True
             if self._device.is_cover_with_position:
                 self._attr_current_cover_position = 0
@@ -98,7 +97,7 @@ class AirSendCover(CoverEntity):
     def stop_cover(self, **kwargs):
         """Stop the cover."""
         note = {"method": 1, "type": 0, "value": "STOP"}
-        if self._device.transfer(note):
+        if self._device.transfer(note, self.entity_id) == True:
             self._closed = False
             if self._device.is_cover_with_position:
                 self._attr_current_cover_position = 50
@@ -108,7 +107,7 @@ class AirSendCover(CoverEntity):
         """Move the cover to a specific position."""
         position = int(kwargs["position"])
         note = {"method": 1, "type": 9, "value": position}
-        if self._device.transfer(note):
+        if self._device.transfer(note, self.entity_id) == True:
             self._attr_current_cover_position = position
             self._closed = False
             if self._attr_current_cover_position == 0:

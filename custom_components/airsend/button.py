@@ -72,5 +72,5 @@ class AirSendButton(ButtonEntity):
     def press(self, **kwargs: Any) -> None:
         """Handle the button press."""
         note = {"method": 1, "type": 0, "value": "TOGGLE"}
-        if self._device.transfer(note):
+        if self._device.transfer(note, self.entity_id) == True:
             self.schedule_update_ha_state()

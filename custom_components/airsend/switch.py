@@ -77,13 +77,13 @@ class AirSendSwitch(SwitchEntity):
     def turn_on(self, **kwargs: Any) -> None:
         """Turn the device on."""
         note = {"method": 1, "type": 0, "value": "ON"}
-        if self._device.transfer(note):
+        if self._device.transfer(note, self.entity_id) == True:
             self._state = True
             self.schedule_update_ha_state()
 
     def turn_off(self, **kwargs: Any) -> None:
         """Turn the device off."""
         note = {"method": 1, "type": 0, "value": "OFF"}
-        if self._device.transfer(note):
+        if self._device.transfer(note, self.entity_id) == True:
             self._state = False
             self.schedule_update_ha_state()
