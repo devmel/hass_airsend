@@ -27,6 +27,8 @@ class Device:
         self._wait = False
         self._channel = {}
         self._note = None
+        self._bind = None
+        self._refresh = 5 * 60
         try:
             self._uid = options["id"]
         except KeyError:
@@ -35,6 +37,8 @@ class Device:
             self._rtype = options["type"]
         except KeyError:
             pass
+        if self._rtype == 0:
+            self._channel = {"id": 1}
         try:
             self._apikey = options["apiKey"]
         except KeyError:
@@ -55,11 +59,64 @@ class Device:
             self._note = options["note"]
         except KeyError:
             pass
+        try:
+            self._bind = int(options["bind"])
+        except KeyError:
+            pass
+        try:
+            self._refresh = int(options["refresh"])
+        except KeyError:
+            pass
 
     @property
     def name(self) -> str:
         """Return the name."""
         return self._name
+
+    @property
+    def unique_channel_name(self) -> str:
+        if self._uid:
+            return self._uid
+        if self._channel:
+            result = str(self._channel['id'])
+            if result:
+                uniquefield = ['source', 'mac', 'seed']
+                for field in uniquefield:
+                    if field in self._channel:
+                        result += "_"
+                        result += str(self._channel[field])
+            return result
+        return self._name
+
+    @property
+    def extra_state_attributes(self):
+        if self._channel:
+            self._attrs = {
+                "channel": self._channel
+            }
+            return self._attrs
+        return None
+
+    @property
+    def is_async(self) -> bool:
+        """Return if asynchronous state."""
+        if self._wait == False:
+            return True
+        return False
+
+    @property
+    def is_airsend(self) -> bool:
+        """Return if is an AirSend."""
+        if self._rtype == 0:
+            return True
+        return False
+
+    @property
+    def is_sensor(self) -> bool:
+        """Return if is a sensor to listen."""
+        if self._rtype == 1:
+            return True
+        return False
 
     @property
     def is_button(self) -> bool:
@@ -88,6 +145,36 @@ class Device:
         if self._rtype == 4097:
             return True
         return False
+
+    @property
+    def refresh_value(self) -> int:
+        """Return refresh value in seconds."""
+        if type(self._refresh) is int and self._refresh > 0:
+            return self._refresh
+        return (5 * 60)
+
+    def bind(self) -> bool:
+        """Bind a channel to listen."""
+        ret = False
+        if self._serviceurl and self._spurl and type(self._bind) is int and self._bind > 0:
+            payload = ('{"channel":{"id": '+str(self._bind)+'},\"duration\":0,\"callback\":\"http://127.0.0.1/\"}')
+            headers = {
+                "Authorization": "Bearer " + self._spurl,
+                "content-type": "application/json",
+                "User-Agent": "hass_airsend",
+            }
+            try:
+                response = post(
+                    self._serviceurl + "airsend/bind",
+                    headers=headers,
+                    data=payload,
+                    timeout=6,
+                )
+                if response.status_code == 200:
+                    ret = True
+            except exceptions.RequestException:
+                pass
+        return ret
 
     def transfer(self, note, entity_id = None) -> bool:
         """Send a command."""

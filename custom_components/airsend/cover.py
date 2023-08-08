@@ -35,10 +35,11 @@ class AirSendCover(CoverEntity):
         device: Device,
     ) -> None:
         """Initialize a cover device."""
+        self._hass = hass
         self._device = device
         uname = DOMAIN + device.name
         self._unique_id = "_".join(x for x in uname)
-        self._closed = False
+        self._closed = None
         if device.is_cover_with_position:
             self._attr_current_cover_position = 50
 
@@ -63,8 +64,7 @@ class AirSendCover(CoverEntity):
 
     @property
     def extra_state_attributes(self):
-        """Return the device state attributes."""
-        return None
+        return self._device.extra_state_attributes
 
     @property
     def assumed_state(self):
@@ -74,6 +74,13 @@ class AirSendCover(CoverEntity):
     @property
     def is_closed(self):
         """Return if the cover is closed."""
+        if self._device.is_async and self._hass:
+            component = self._hass.states.get(self.entity_id)
+            if component is not None:
+                if component.state == 'open' or component.state == 'on' or component.state == 'up':
+                    self._closed = False
+                else:
+                    self._closed = True
         return self._closed
 
     def open_cover(self, **kwargs: Any) -> None:

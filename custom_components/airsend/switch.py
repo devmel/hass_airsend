@@ -11,7 +11,6 @@ from homeassistant.const import CONF_DEVICES, CONF_INTERNAL_URL
 
 from . import DOMAIN
 
-
 async def async_setup_platform(
     hass: HomeAssistant, config: ConfigType, async_add_entities, discovery_info=None
 ) -> None:
@@ -36,10 +35,11 @@ class AirSendSwitch(SwitchEntity):
         device: Device,
     ) -> None:
         """Initialize a switch or light device."""
+        self._hass = hass
         self._device = device
         uname = DOMAIN + device.name
         self._unique_id = "_".join(x for x in uname)
-        self._state = False
+        self._state = None
 
     @property
     def unique_id(self):
@@ -63,7 +63,7 @@ class AirSendSwitch(SwitchEntity):
     @property
     def extra_state_attributes(self):
         """Return the device state attributes."""
-        return None
+        return self._device.extra_state_attributes
 
     @property
     def assumed_state(self):
@@ -72,6 +72,13 @@ class AirSendSwitch(SwitchEntity):
 
     @property
     def is_on(self):
+        if self._device.is_async and self._hass:
+            component = self._hass.states.get(self.entity_id)
+            if component is not None:
+                if component.state == 'on':
+                    self._state = True
+                else:
+                    self._state = False
         return self._state
 
     def turn_on(self, **kwargs: Any) -> None:

@@ -2,22 +2,10 @@
 # Configure a default setup of Home Assistant (frontend, api, etc)
 default_config:
 
-airsend:
-  devices:
-    volet cuisine:
-      id: 9000
-      type: 4098
-      apiKey: !secret apiKey
-    prise somfy:
-      type: 4097
-      spurl: !secret spurl
-      channel:
-         id: 13920
-         source: 19259
-
-
 group: !include groups.yaml
 automation: !include automations.yaml
 script: !include scripts.yaml
 scene: !include scenes.yaml
+
+airsend: !include airsend.yaml
 

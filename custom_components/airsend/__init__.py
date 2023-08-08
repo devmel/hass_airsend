@@ -8,7 +8,7 @@ from homeassistant.components.hassio import (
 from homeassistant.const import CONF_INTERNAL_URL
 
 DOMAIN = "airsend"
-AS_TYPE = ["switch", "cover", "button"]
+AS_TYPE = ["button", "cover", "sensor", "switch"]
 
 async def async_setup(hass: HomeAssistant, config: ConfigType):
     """Set up the AirSend component."""

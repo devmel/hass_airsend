@@ -1,0 +1,35 @@
+#internal_url: http://192.168.0.21:33863/
+devices:
+  AirSend:
+    type: 0
+    spurl: !secret spurl
+    sensors: 1
+    bind: 1
+    refresh: 300
+  Original remote:
+    type: 1
+    channel:
+      id: 13920
+      source: 568745
+  Nexus Temperature:
+    type: 1
+    id: "1368_542_temp"
+    channel:
+      id: 1368
+      source: 542
+  Nexus RH:
+    type: 1
+    id: "1368_542_rh"
+    channel:
+      id: 1368
+      source: 542
+  volet cuisine:
+    id: 9000
+    type: 4098
+    apiKey: !secret apiKey
+  prise somfy:
+    type: 4097
+    spurl: !secret spurl
+    channel:
+        id: 13920
+        source: 19259
