@@ -3,7 +3,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers import discovery
 from homeassistant.components.hassio import (
-    get_addons_info,
+    async_get_addon_discovery_info,
 )
 from homeassistant.const import CONF_INTERNAL_URL
 
@@ -21,7 +21,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType):
         pass
     if internalurl == "":
         try:
-            addons_info = get_addons_info(hass)
+            addons_info = async_get_addon_discovery_info(hass)
             for name, options in addons_info.items():
                 if "_airsend" in name:
                     ip = options["ip_address"]
