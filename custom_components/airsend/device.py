@@ -7,6 +7,15 @@ from . import DOMAIN
 
 _LOGGER = logging.getLogger(DOMAIN)
 
+RTYPE_LABELS = {
+    0: "AirSend",
+    1: "AirSend Sensor",
+    4096: "AirSend Button",
+    4097: "AirSend Switch",
+    4098: "AirSend Cover",
+    4099: "AirSend Cover (position)",
+}
+
 
 class Device:
     """Representation of a Device."""
@@ -76,7 +85,7 @@ class Device:
     @property
     def unique_channel_name(self) -> str:
         if self._uid:
-            return self._uid
+            return str(self._uid)
         if self._channel:
             result = str(self._channel['id'])
             if result:
@@ -87,6 +96,16 @@ class Device:
                         result += str(self._channel[field])
             return result
         return self._name
+
+    @property
+    def device_info(self) -> dict:
+        """Return device info for Home Assistant device registry."""
+        return {
+            "identifiers": {(DOMAIN, self.unique_channel_name)},
+            "name": self._name,
+            "manufacturer": "AirSend",
+            "model": RTYPE_LABELS.get(self._rtype, "AirSend"),
+        }
 
     @property
     def extra_state_attributes(self):
@@ -176,7 +195,7 @@ class Device:
                 pass
         return ret
 
-    def transfer(self, note, entity_id = None) -> bool:
+    def transfer(self, note, entity_id=None) -> bool:
         """Send a command."""
         status_code = 404
         ret = False

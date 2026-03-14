@@ -1,0 +1,28 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurer AirSend",
+        "description": "Le fichier `airsend.yaml` doit être présent dans le dossier `/config`.\nChaque appareil défini dans ce fichier sera créé comme un appareil Home Assistant.\n\nURL interne détectée automatiquement si l'addon AirSend est installé.",
+        "data": {
+          "internal_url": "URL interne (laisser vide pour auto-détection)"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigurer AirSend",
+        "description": "Rechargez la configuration depuis `airsend.yaml` et mettez à jour l'URL si nécessaire.",
+        "data": {
+          "internal_url": "URL interne"
+        }
+      }
+    },
+    "error": {
+      "no_devices": "Aucun appareil trouvé dans airsend.yaml. Vérifiez la section `devices:`.",
+      "yaml_not_found": "Fichier airsend.yaml introuvable dans /config. Créez-le d'abord."
+    },
+    "abort": {
+      "already_configured": "AirSend est déjà configuré.",
+      "reconfigure_successful": "Reconfiguration réussie."
+    }
+  }
+}
