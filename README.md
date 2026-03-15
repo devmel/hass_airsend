@@ -15,14 +15,15 @@ Component for sending radio commands through the AirSend (RF433) or AirSend duo 
    - Select your devices, for local connection, select `spurl`
    - Click `Export YAML` to save the airsend.yaml
    - In the `config` folder of Home Assistant, place the `airsend.yaml` file.
-   - Add these lines
+   - Edit the file and add these lines
+     ```yaml
      devices:
        ...
        AirSend Box:
          type: 0
          spurl: !secret spurl
          sensors: true
-     
+     ```    
 
 3. **Edit the `secrets.yaml` File**:
    - Add a line to the `secrets.yaml` file with the AirSend - Local IP - / - Password - (and IPv4 address).
