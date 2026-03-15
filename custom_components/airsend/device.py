@@ -292,4 +292,4 @@ class Device:
         if status_code == 200:
             return ret
         _LOGGER.error("Transfer error '%s' : '%s'", self.name, status_code)
-        raise Exception("Transfer error " + self.name + " : " + str(status_code))
+        return False
