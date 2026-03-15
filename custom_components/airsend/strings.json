@@ -2,27 +2,30 @@
   "config": {
     "step": {
       "user": {
-        "title": "Configurer AirSend",
-        "description": "Le fichier `airsend.yaml` doit être présent dans le dossier `/config`.\nChaque appareil défini dans ce fichier sera créé comme un appareil Home Assistant.\n\nURL interne détectée automatiquement si l'addon AirSend est installé.",
+        "title": "Set up AirSend",
+        "description": "The `airsend.yaml` file must be present in `/config`.\nThe internal URL is auto-detected if the AirSend addon is running.",
         "data": {
-          "internal_url": "URL interne (laisser vide pour auto-détection)"
+          "internal_url": "Internal URL (e.g. http://172.30.33.4:33863/)"
         }
       },
       "reconfigure": {
-        "title": "Reconfigurer AirSend",
-        "description": "Rechargez la configuration depuis `airsend.yaml` et mettez à jour l'URL si nécessaire.",
+        "title": "Reconfigure AirSend",
+        "description": "Reload configuration from `airsend.yaml` and update the URL if needed.",
         "data": {
-          "internal_url": "URL interne"
+          "internal_url": "Internal URL"
         }
       }
     },
     "error": {
-      "no_devices": "Aucun appareil trouvé dans airsend.yaml. Vérifiez la section `devices:`.",
-      "yaml_not_found": "Fichier airsend.yaml introuvable dans /config. Créez-le d'abord."
+      "no_devices": "No devices found in airsend.yaml. Check the `devices:` section.",
+      "yaml_not_found": "File airsend.yaml not found in /config. Please create it first.",
+      "cannot_connect": "Unable to reach the AirSend addon. Check that the addon is running and the URL is correct.",
+      "timeout": "The AirSend addon is not responding (timeout). Check that the addon is running.",
+      "no_url": "Please enter the internal URL of the AirSend addon."
     },
     "abort": {
-      "already_configured": "AirSend est déjà configuré.",
-      "reconfigure_successful": "Reconfiguration réussie."
+      "already_configured": "AirSend is already configured.",
+      "reconfigure_successful": "Reconfiguration successful."
     }
   }
 }

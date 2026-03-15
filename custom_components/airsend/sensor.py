@@ -1,5 +1,4 @@
 """AirSend sensors."""
-from datetime import timedelta
 import logging
 
 from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
@@ -7,9 +6,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo, generate_entity_id
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.const import CONF_INTERNAL_URL, UnitOfTemperature, LIGHT_LUX
 
+from .coordinator import AirSendCoordinator
 from .device import Device
 from . import DOMAIN
 
@@ -21,19 +21,22 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up AirSend sensors from a config entry."""
-    internal_url = entry.data.get(CONF_INTERNAL_URL, "")
+    coordinators: dict[str, AirSendCoordinator] = (
+        hass.data[DOMAIN][entry.entry_id]["coordinators"]
+    )
     devices_config = entry.data.get("devices", {})
+    internal_url = entry.data.get(CONF_INTERNAL_URL, "")
 
     entities = []
-    for name, options in devices_config.items():
-        device = Device(name, options, internal_url)
+    for name, coordinator in coordinators.items():
+        device = coordinator.device
+        options = devices_config.get(name, {})
 
-        # Generic external sensor (type 1)
+        # Generic external sensor (type 1) — no coordinator needed
         if device.is_sensor:
-            entities.append(AirSendAnySensor(hass, device))
+            entities.append(AirSendAnySensor(hass, device, internal_url))
 
-        # AirSend box sensors (type 0) — optional temp/illuminance
+        # AirSend box sensors (type 0)
         if device.is_airsend:
             sensors = False
             try:
@@ -41,16 +44,17 @@ async def async_setup_entry(
             except Exception:
                 pass
             if sensors:
-                entities.append(AirSendTempSensor(hass, device))
-                entities.append(AirSendIllSensor(hass, device))
+                coordinator.set_has_sensors(True)
+                entities.append(AirSendTempSensor(coordinator))
+                entities.append(AirSendIllSensor(coordinator))
 
     async_add_entities(entities)
 
 
 class AirSendAnySensor(SensorEntity):
-    """Generic AirSend sensor (type 1)."""
+    """Generic AirSend sensor (type 1) — no coordinator, push only."""
 
-    def __init__(self, hass: HomeAssistant, device: Device) -> None:
+    def __init__(self, hass: HomeAssistant, device: Device, internal_url: str) -> None:
         self._device = device
         self._unique_id = DOMAIN + "_" + str(device.unique_channel_name) + "_sensor"
         self.entity_id = generate_entity_id("sensor.{}", device.unique_channel_name, hass=hass)
@@ -80,20 +84,12 @@ class AirSendAnySensor(SensorEntity):
         return self._device.device_info
 
 
-class AirSendTempSensor(SensorEntity):
-    """AirSend device temperature sensor."""
+class AirSendTempSensor(CoordinatorEntity, SensorEntity):
+    """AirSend device temperature sensor — uses shared coordinator."""
 
-    def __init__(self, hass: HomeAssistant, device: Device) -> None:
-        self._device = device
-        uname = DOMAIN + "_" + str(device.unique_channel_name) + "_temp"
-        self._unique_id = uname
-        self._coordinator = DataUpdateCoordinator(
-            hass, _LOGGER,
-            name=uname,
-            update_method=self.async_update_data,
-            update_interval=timedelta(seconds=12),
-        )
-        self._coordinator.async_add_listener(lambda: None)
+    def __init__(self, coordinator: AirSendCoordinator) -> None:
+        super().__init__(coordinator)
+        self._unique_id = DOMAIN + "_" + str(coordinator.device.unique_channel_name) + "_temp"
 
     @property
     def unique_id(self):
@@ -101,11 +97,11 @@ class AirSendTempSensor(SensorEntity):
 
     @property
     def name(self):
-        return self._device.name + "_temp"
+        return self.coordinator.device.name + "_temp"
 
     @property
-    def available(self):
-        return True
+    def available(self) -> bool:
+        return self.coordinator.data.get("available", True)
 
     @property
     def device_class(self) -> SensorDeviceClass:
@@ -116,35 +112,20 @@ class AirSendTempSensor(SensorEntity):
         return UnitOfTemperature.CELSIUS
 
     @property
-    def should_poll(self) -> bool:
-        return False
+    def native_value(self):
+        return self.coordinator.data.get("temperature")
 
     @property
     def device_info(self) -> DeviceInfo:
-        return self._device.device_info
-
-    async def async_update_data(self):
-        self._coordinator.update_interval = timedelta(seconds=self._device.refresh_value)
-        note = {"method": "QUERY", "type": "TEMPERATURE"}
-        await self._coordinator.hass.async_add_executor_job(
-            lambda: self._device.transfer(note, self.entity_id)
-        )
+        return self.coordinator.device.device_info
 
 
-class AirSendIllSensor(SensorEntity):
-    """AirSend device illuminance sensor."""
+class AirSendIllSensor(CoordinatorEntity, SensorEntity):
+    """AirSend device illuminance sensor — uses shared coordinator."""
 
-    def __init__(self, hass: HomeAssistant, device: Device) -> None:
-        self._device = device
-        uname = DOMAIN + "_" + str(device.unique_channel_name) + "_ill"
-        self._unique_id = uname
-        self._coordinator = DataUpdateCoordinator(
-            hass, _LOGGER,
-            name=uname,
-            update_method=self.async_update_data,
-            update_interval=timedelta(seconds=12),
-        )
-        self._coordinator.async_add_listener(lambda: None)
+    def __init__(self, coordinator: AirSendCoordinator) -> None:
+        super().__init__(coordinator)
+        self._unique_id = DOMAIN + "_" + str(coordinator.device.unique_channel_name) + "_ill"
 
     @property
     def unique_id(self):
@@ -152,11 +133,11 @@ class AirSendIllSensor(SensorEntity):
 
     @property
     def name(self):
-        return self._device.name + "_ill"
+        return self.coordinator.device.name + "_ill"
 
     @property
-    def available(self):
-        return True
+    def available(self) -> bool:
+        return self.coordinator.data.get("available", True)
 
     @property
     def device_class(self) -> SensorDeviceClass:
@@ -167,16 +148,9 @@ class AirSendIllSensor(SensorEntity):
         return LIGHT_LUX
 
     @property
-    def should_poll(self) -> bool:
-        return False
+    def native_value(self):
+        return self.coordinator.data.get("illuminance")
 
     @property
     def device_info(self) -> DeviceInfo:
-        return self._device.device_info
-
-    async def async_update_data(self):
-        self._coordinator.update_interval = timedelta(seconds=self._device.refresh_value)
-        note = {"method": "QUERY", "type": "ILLUMINANCE"}
-        await self._coordinator.hass.async_add_executor_job(
-            lambda: self._device.transfer(note, self.entity_id)
-        )
+        return self.coordinator.device.device_info

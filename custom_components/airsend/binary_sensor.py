@@ -1,5 +1,4 @@
 """AirSend binary sensors — state monitoring for AirSend boxes (type 0)."""
-from datetime import timedelta
 import logging
 
 from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
@@ -7,10 +6,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.const import CONF_INTERNAL_URL
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .device import Device
+from .coordinator import AirSendCoordinator
 from . import DOMAIN
 
 _LOGGER = logging.getLogger(DOMAIN)
@@ -21,34 +19,22 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up AirSend binary sensors from a config entry."""
-    internal_url = entry.data.get(CONF_INTERNAL_URL, "")
-    devices_config = entry.data.get("devices", {})
-
+    coordinators: dict[str, AirSendCoordinator] = (
+        hass.data[DOMAIN][entry.entry_id]["coordinators"]
+    )
     entities = []
-    for name, options in devices_config.items():
-        device = Device(name, options, internal_url)
-        if device.is_airsend:
-            entities.append(AirSendStateSensor(hass, device))
-
+    for name, coordinator in coordinators.items():
+        if coordinator.device.is_airsend:
+            entities.append(AirSendStateSensor(coordinator))
     async_add_entities(entities)
 
 
-class AirSendStateSensor(BinarySensorEntity):
+class AirSendStateSensor(CoordinatorEntity, BinarySensorEntity):
     """Binary sensor representing the running state of an AirSend box."""
 
-    def __init__(self, hass: HomeAssistant, device: Device) -> None:
-        self.hass = hass
-        self._device = device
-        uname = DOMAIN + "_" + str(device.unique_channel_name) + "_state"
-        self._unique_id = uname
-        self._coordinator = DataUpdateCoordinator(
-            hass, _LOGGER,
-            name=uname,
-            update_method=self.async_update_data,
-            update_interval=timedelta(seconds=10),
-        )
-        self._coordinator.async_add_listener(lambda: None)
+    def __init__(self, coordinator: AirSendCoordinator) -> None:
+        super().__init__(coordinator)
+        self._unique_id = DOMAIN + "_" + str(coordinator.device.unique_channel_name) + "_state"
 
     @property
     def unique_id(self):
@@ -56,30 +42,20 @@ class AirSendStateSensor(BinarySensorEntity):
 
     @property
     def name(self):
-        return self._device.name + "_state"
+        return self.coordinator.device.name + "_state"
 
     @property
     def device_class(self) -> BinarySensorDeviceClass:
         return BinarySensorDeviceClass.RUNNING
 
     @property
-    def available(self):
-        return True
+    def available(self) -> bool:
+        return self.coordinator.data.get("available", True)
 
     @property
-    def should_poll(self) -> bool:
-        return False
+    def is_on(self) -> bool | None:
+        return self.coordinator.data.get("available", True)
 
     @property
     def device_info(self) -> DeviceInfo:
-        return self._device.device_info
-
-    async def async_update_data(self):
-        self._coordinator.update_interval = timedelta(seconds=self._device.refresh_value)
-        note = {"method": "QUERY", "type": "STATE"}
-        await self.hass.async_add_executor_job(
-            lambda: self._device.transfer(note, self.entity_id)
-        )
-        await self.hass.async_add_executor_job(
-            lambda: self._device.bind()
-        )
+        return self.coordinator.device.device_info

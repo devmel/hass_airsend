@@ -22,8 +22,26 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up AirSend from a config entry."""
+    from .coordinator import AirSendCoordinator
+    from .device import Device
+
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = entry.data
+
+    # Create one coordinator per device and start them
+    internal_url = entry.data.get(CONF_INTERNAL_URL, "")
+    devices_config = entry.data.get("devices", {})
+
+    coordinators = {}
+    for name, options in devices_config.items():
+        device = Device(name, options, internal_url)
+        coordinator = AirSendCoordinator(hass, device)
+        coordinators[name] = coordinator
+
+    hass.data[DOMAIN][entry.entry_id] = {
+        "entry": entry.data,
+        "coordinators": coordinators,
+    }
+
     await hass.config_entries.async_forward_entry_setups(entry, AS_PLATFORMS)
     return True
 
@@ -66,11 +84,7 @@ def load_airsend_yaml(hass: HomeAssistant) -> dict:
             return ""
         return value
 
-    loader_class = type(
-        "SecretLoader",
-        (_yaml.SafeLoader,),
-        {}
-    )
+    loader_class = type("SecretLoader", (_yaml.SafeLoader,), {})
     loader_class.add_constructor("!secret", secret_constructor)
 
     try:

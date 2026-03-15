@@ -18,16 +18,13 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up AirSend buttons from a config entry."""
     internal_url = entry.data.get(CONF_INTERNAL_URL, "")
     devices_config = entry.data.get("devices", {})
-
     entities = []
     for name, options in devices_config.items():
         device = Device(name, options, internal_url)
         if device.is_button:
             entities.append(AirSendButton(hass, device))
-
     async_add_entities(entities)
 
 
@@ -37,6 +34,7 @@ class AirSendButton(ButtonEntity):
     def __init__(self, hass: HomeAssistant, device: Device) -> None:
         self._device = device
         self._unique_id = DOMAIN + "_" + str(device.unique_channel_name) + "_button"
+        self._available = True
 
     @property
     def unique_id(self):
@@ -44,7 +42,7 @@ class AirSendButton(ButtonEntity):
 
     @property
     def available(self):
-        return True
+        return self._available
 
     @property
     def should_poll(self):
@@ -66,7 +64,10 @@ class AirSendButton(ButtonEntity):
     def device_info(self) -> DeviceInfo:
         return self._device.device_info
 
-    def press(self, **kwargs: Any) -> None:
+    async def async_press(self, **kwargs: Any) -> None:
         note = {"method": 1, "type": 0, "value": "TOGGLE"}
-        if self._device.transfer(note, self.entity_id):
-            self.schedule_update_ha_state()
+        result = await self._device.async_transfer(note, self.entity_id)
+        available = result is not False
+        if self._available != available:
+            self._available = available
+            self.async_write_ha_state()

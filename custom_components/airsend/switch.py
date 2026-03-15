@@ -18,16 +18,13 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up AirSend switches from a config entry."""
     internal_url = entry.data.get(CONF_INTERNAL_URL, "")
     devices_config = entry.data.get("devices", {})
-
     entities = []
     for name, options in devices_config.items():
         device = Device(name, options, internal_url)
         if device.is_switch:
             entities.append(AirSendSwitch(hass, device))
-
     async_add_entities(entities)
 
 
@@ -39,6 +36,7 @@ class AirSendSwitch(SwitchEntity):
         self._device = device
         self._unique_id = DOMAIN + "_" + str(device.unique_channel_name) + "_switch"
         self._state = None
+        self._available = True
 
     @property
     def unique_id(self):
@@ -46,7 +44,7 @@ class AirSendSwitch(SwitchEntity):
 
     @property
     def available(self):
-        return True
+        return self._available
 
     @property
     def should_poll(self):
@@ -76,14 +74,20 @@ class AirSendSwitch(SwitchEntity):
                 self._state = component.state == 'on'
         return self._state
 
-    def turn_on(self, **kwargs: Any) -> None:
-        note = {"method": 1, "type": 0, "value": "ON"}
-        if self._device.transfer(note, self.entity_id):
-            self._state = True
-            self.schedule_update_ha_state()
+    async def _send(self, note: dict) -> bool:
+        result = await self._device.async_transfer(note, self.entity_id)
+        available = result is not False
+        if self._available != available:
+            self._available = available
+            self.async_write_ha_state()
+        return result is not False
 
-    def turn_off(self, **kwargs: Any) -> None:
-        note = {"method": 1, "type": 0, "value": "OFF"}
-        if self._device.transfer(note, self.entity_id):
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        if await self._send({"method": 1, "type": 0, "value": "ON"}):
+            self._state = True
+            self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        if await self._send({"method": 1, "type": 0, "value": "OFF"}):
             self._state = False
-            self.schedule_update_ha_state()
+            self.async_write_ha_state()
