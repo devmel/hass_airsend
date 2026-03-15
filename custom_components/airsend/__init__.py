@@ -10,7 +10,7 @@ from homeassistant.const import CONF_INTERNAL_URL
 from homeassistant.components.hassio import get_addons_info
 
 DOMAIN = "airsend"
-AS_PLATFORMS = ["cover", "switch", "button", "sensor", "binary_sensor"]
+AS_PLATFORMS = ["cover", "switch", "button", "light", "sensor", "binary_sensor"]
 
 _LOGGER = logging.getLogger(DOMAIN)
 
@@ -27,7 +27,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})
 
-    # Create one coordinator per device and start them
     internal_url = entry.data.get(CONF_INTERNAL_URL, "")
     devices_config = entry.data.get("devices", {})
 
@@ -65,7 +64,6 @@ def load_airsend_yaml(hass: HomeAssistant) -> dict:
         _LOGGER.error("airsend.yaml not found at %s", path)
         return {}
 
-    # Load secrets.yaml
     secrets = {}
     secrets_path = os.path.join(config_dir, "secrets.yaml")
     if os.path.exists(secrets_path):
@@ -75,7 +73,6 @@ def load_airsend_yaml(hass: HomeAssistant) -> dict:
         except Exception as e:
             _LOGGER.warning("Could not load secrets.yaml: %s", e)
 
-    # Custom constructor to resolve !secret tags
     def secret_constructor(loader, node):
         key = loader.construct_scalar(node)
         value = secrets.get(key)

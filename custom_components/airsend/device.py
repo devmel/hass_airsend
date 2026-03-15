@@ -14,6 +14,7 @@ RTYPE_LABELS = {
     4097: "AirSend Switch",
     4098: "AirSend Cover",
     4099: "AirSend Cover (position)",
+    4100: "AirSend Light",
 }
 
 
@@ -143,6 +144,10 @@ class Device:
         return self._rtype == 4097
 
     @property
+    def is_light(self) -> bool:
+        return self._rtype == 4100
+
+    @property
     def refresh_value(self) -> int:
         """Return refresh value in seconds."""
         if isinstance(self._refresh, int) and self._refresh > 0:
@@ -267,5 +272,9 @@ class Device:
 
         if status_code == 200:
             return ret
+        # 500 with wait=True means RF confirmation not received but command was sent
+        if status_code == 500 and self._wait:
+            _LOGGER.warning("Transfer '%s' : no RF confirmation (500), command may have been sent", self.name)
+            return True
         _LOGGER.error("Transfer error '%s' : '%s'", self.name, status_code)
         return False
