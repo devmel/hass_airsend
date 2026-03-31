@@ -22,6 +22,8 @@ Component for sending radio commands through the AirSend (RF433) or AirSend duo 
      ```yaml
      spurl: sp://**************@[fe80::xxxx:xxxx:xxxx:xxxx]?gw=0&rhost=192.168.xxx.xxx
      ```
+      This applies also if you want to **ensure local connection** and **no reliance on any cloud / internet access** to control your devices, cf. the Information section below.
+     
    - or this if you don't know the IPv4 address :
      ```yaml
      spurl: sp://**************@[fe80::xxxx:xxxx:xxxx:xxxx]?gw=1
@@ -50,7 +52,7 @@ These steps will integrate AirSend with Home Assistant, allowing you to manage a
 ## Information 
 
    - This requires the execution of [hass_airsend-addon](https://github.com/devmel/hass_airsend-addon), if it is not on the same machine it is possible to add the field `internal_url: http://x.x.x.x:33863/` in airsend.conf
-   - For local connection, the AirSend IPv4 address is required, you can find it in your router or [Airsend App for Windows](https://apps.microsoft.com/detail/9nblggh40m8w).
+   - For **local** connection, the AirSend IPv4 address is **required**, you can find it in your router or [Airsend App for Windows](https://apps.microsoft.com/detail/9nblggh40m8w). If you **DO NOT** provide `?gw=0&rhost=...` then you may face unexpected **HTTP/500** status code or **HTTP/262** status code at Home Assistant level.
 
 ## Preview
 
