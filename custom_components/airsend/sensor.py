@@ -1,71 +1,74 @@
 """AirSend sensors."""
-from typing import Any
-from datetime import timedelta
-
-from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorDeviceClass
-from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import generate_entity_id
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.helpers.typing import ConfigType
-from homeassistant.const import CONF_DEVICES, CONF_INTERNAL_URL, UnitOfTemperature, LIGHT_LUX
-
-from .device import Device
-
-from . import DOMAIN
 import logging
+
+from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity import DeviceInfo, generate_entity_id
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.const import CONF_INTERNAL_URL, UnitOfTemperature, LIGHT_LUX
+
+from .coordinator import AirSendCoordinator
+from .device import Device
+from . import DOMAIN
+
 _LOGGER = logging.getLogger(DOMAIN)
 
-async def async_setup_platform(
-    hass: HomeAssistant, config: ConfigType, async_add_entities, discovery_info=None
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
-    if discovery_info is None:
-        return
-    for name, options in discovery_info[CONF_DEVICES].items():
-        device = Device(name, options, discovery_info[CONF_INTERNAL_URL])
+    coordinators: dict[str, AirSendCoordinator] = (
+        hass.data[DOMAIN][entry.entry_id]["coordinators"]
+    )
+    devices_config = entry.data.get("devices", {})
+    internal_url = entry.data.get(CONF_INTERNAL_URL, "")
+
+    entities = []
+    for name, coordinator in coordinators.items():
+        device = coordinator.device
+        options = devices_config.get(name, {})
+
+        # Generic external sensor (type 1) — no coordinator needed
+        if device.is_sensor:
+            entities.append(AirSendAnySensor(hass, device, internal_url))
+
+        # AirSend box sensors (type 0)
         if device.is_airsend:
-            entity = AirSendStateSensor(hass, device)
-            async_add_entities([entity])
             sensors = False
             try:
-                sensors = eval(str(options["sensors"]))
-            except KeyError:
+                sensors = eval(str(options.get("sensors", False)))
+            except Exception:
                 pass
-            if sensors == True:
-                entityTmp = AirSendTempSensor(hass, device)
-                entityIll = AirSendIllSensor(hass, device)
-                async_add_entities([entityTmp, entityIll])
-        if device.is_sensor:
-            entity = AirSendAnySensor(hass, device)
-            async_add_entities([entity])
+            if sensors:
+                coordinator.set_has_sensors(True)
+                entities.append(AirSendTempSensor(coordinator))
+                entities.append(AirSendIllSensor(coordinator))
+
+    async_add_entities(entities)
+
 
 class AirSendAnySensor(SensorEntity):
-    """Representation of an AirSend device temperature."""
+    """Generic AirSend sensor (type 1) — no coordinator, push only."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        device: Device,
-    ) -> None:
-        """Initialize a sensor."""
+    def __init__(self, hass: HomeAssistant, device: Device, internal_url: str) -> None:
         self._device = device
-        uname = DOMAIN + device.name
-        self._unique_id = "_".join(x for x in uname)
-        self.entity_id = generate_entity_id("sensor.{}", self._device.unique_channel_name, hass=hass)
+        self._unique_id = DOMAIN + "_" + str(device.unique_channel_name) + "_sensor"
+        self.entity_id = generate_entity_id("sensor.{}", device.unique_channel_name, hass=hass)
 
     @property
     def unique_id(self):
-        """Return unique identifier of device."""
         return self._unique_id
 
     @property
     def name(self):
-        """Return the name of the device if any."""
         return self._device.name
 
     @property
     def extra_state_attributes(self):
-        """Return the device state attributes."""
         return self._device.extra_state_attributes
 
     @property
@@ -74,180 +77,80 @@ class AirSendAnySensor(SensorEntity):
 
     @property
     def should_poll(self) -> bool:
-        """Return the polling state."""
         return False
 
+    @property
+    def device_info(self) -> DeviceInfo:
+        return self._device.device_info
 
-class AirSendStateSensor(BinarySensorEntity):
-    """Representation of an AirSend device."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        device: Device,
-    ) -> None:
-        """Initialize a sensor."""
-        self.hass = hass
-        self._bind = None
-        self._device = device
-        uname = DOMAIN + device.name + "_state"
-        self._unique_id = "_".join(x for x in uname)
-        self._coordinator = DataUpdateCoordinator(
-            hass,
-            _LOGGER,
-            name=uname,
-            update_method=self.async_update_data,
-            update_interval=timedelta(seconds=10), 
-        )
-        def null_callback():
-            return
-        self._coordinator.async_add_listener(null_callback)
+class AirSendTempSensor(CoordinatorEntity, SensorEntity):
+    """AirSend device temperature sensor — uses shared coordinator."""
+
+    def __init__(self, coordinator: AirSendCoordinator) -> None:
+        super().__init__(coordinator)
+        self._unique_id = DOMAIN + "_" + str(coordinator.device.unique_channel_name) + "_temp"
 
     @property
     def unique_id(self):
-        """Return unique identifier of device."""
         return self._unique_id
 
     @property
     def name(self):
-        """Return the name of the device if any."""
-        return self._device.name + "_state"
+        return self.coordinator.device.name + "_temp"
 
     @property
-    def device_class(self) -> BinarySensorDeviceClass | None:
-        """Cette entité"""
-        return BinarySensorDeviceClass.RUNNING
+    def available(self) -> bool:
+        return self.coordinator.data.get("available", True)
 
     @property
-    def available(self):
-        return True
-
-    @property
-    def should_poll(self) -> bool:
-        """Return the polling state."""
-        return False
-
-    async def async_update_data(self):
-        """Register update callback."""
-        self._coordinator.update_interval = timedelta(seconds=self._device.refresh_value)
-        note = {"method": "QUERY", "type": "STATE"}
-        await self.hass.async_add_executor_job( lambda: self._device.transfer(note, self.entity_id) )
-        await self.hass.async_add_executor_job( lambda: self._device.bind() )
-
-
-class AirSendTempSensor(SensorEntity):
-    """Representation of an AirSend device temperature."""
-
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        device: Device,
-    ) -> None:
-        """Initialize a sensor."""
-        self._device = device
-        uname = DOMAIN + device.name + "_temp"
-        self._unique_id = "_".join(x for x in uname)
-        self._coordinator = DataUpdateCoordinator(
-            hass,
-            _LOGGER,
-            name=uname,
-            update_method=self.async_update_data,
-            update_interval=timedelta(seconds=12), 
-        )
-        def null_callback():
-            return
-        self._coordinator.async_add_listener(null_callback)
-
-    @property
-    def unique_id(self):
-        """Return unique identifier of device."""
-        return self._unique_id
-
-    @property
-    def name(self):
-        """Return the name of the device if any."""
-        return self._device.name + "_temp"
-
-    @property
-    def available(self):
-        return True
-
-    @property
-    def device_class(self) -> SensorDeviceClass | None:
-        """Cette entité"""
+    def device_class(self) -> SensorDeviceClass:
         return SensorDeviceClass.TEMPERATURE
 
     @property
     def native_unit_of_measurement(self):
-        """Return measurement unit."""
         return UnitOfTemperature.CELSIUS
 
     @property
-    def should_poll(self) -> bool:
-        """Return the polling state."""
-        return False
+    def native_value(self):
+        return self.coordinator.data.get("temperature")
 
-    async def async_update_data(self):
-        """Register update callback."""
-        self._coordinator.update_interval = timedelta(seconds=self._device.refresh_value)
-        note = {"method": "QUERY", "type": "TEMPERATURE"}
-        await self.hass.async_add_executor_job( lambda: self._device.transfer(note, self.entity_id) )
+    @property
+    def device_info(self) -> DeviceInfo:
+        return self.coordinator.device.device_info
 
 
-class AirSendIllSensor(SensorEntity):
-    """Representation of an AirSend device temperature."""
+class AirSendIllSensor(CoordinatorEntity, SensorEntity):
+    """AirSend device illuminance sensor — uses shared coordinator."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        device: Device,
-    ) -> None:
-        """Initialize a sensor."""
-        self._device = device
-        uname = DOMAIN + device.name + "_ill"
-        self._unique_id = "_".join(x for x in uname)
-        self._coordinator = DataUpdateCoordinator(
-            hass,
-            _LOGGER,
-            name=uname,
-            update_method=self.async_update_data,
-            update_interval=timedelta(seconds=12), 
-        )
-        def null_callback():
-            return
-        self._coordinator.async_add_listener(null_callback)
+    def __init__(self, coordinator: AirSendCoordinator) -> None:
+        super().__init__(coordinator)
+        self._unique_id = DOMAIN + "_" + str(coordinator.device.unique_channel_name) + "_ill"
 
     @property
     def unique_id(self):
-        """Return unique identifier of device."""
         return self._unique_id
 
     @property
     def name(self):
-        """Return the name of the device if any."""
-        return self._device.name + "_ill"
+        return self.coordinator.device.name + "_ill"
 
     @property
-    def available(self):
-        return True
+    def available(self) -> bool:
+        return self.coordinator.data.get("available", True)
 
     @property
-    def device_class(self) -> SensorDeviceClass | None:
-        """Cette entité"""
+    def device_class(self) -> SensorDeviceClass:
         return SensorDeviceClass.ILLUMINANCE
 
     @property
     def native_unit_of_measurement(self):
-        """Return measurement unit."""
         return LIGHT_LUX
 
     @property
-    def should_poll(self) -> bool:
-        """Return the polling state."""
-        return False
+    def native_value(self):
+        return self.coordinator.data.get("illuminance")
 
-    async def async_update_data(self):
-        """Register update callback."""
-        self._coordinator.update_interval = timedelta(seconds=self._device.refresh_value)
-        note = {"method": "QUERY", "type": "ILLUMINANCE"}
-        await self.hass.async_add_executor_job( lambda: self._device.transfer(note, self.entity_id) )
+    @property
+    def device_info(self) -> DeviceInfo:
+        return self.coordinator.device.device_info

@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurer AirSend",
+        "description": "Le fichier `airsend.yaml` doit être présent dans `/config`.\nL'URL interne est auto-détectée si l'addon AirSend est installé.",
+        "data": {
+          "internal_url": "URL interne (ex: http://172.30.33.4:33863/)"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigurer AirSend",
+        "description": "Rechargez la configuration depuis `airsend.yaml` et mettez à jour l'URL si nécessaire.",
+        "data": {
+          "internal_url": "URL interne"
+        }
+      }
+    },
+    "error": {
+      "no_devices": "Aucun appareil trouvé dans airsend.yaml. Vérifiez la section `devices:`.",
+      "yaml_not_found": "Fichier airsend.yaml introuvable dans /config. Créez-le d'abord.",
+      "cannot_connect": "Impossible de joindre l'addon AirSend. Vérifiez que l'addon est démarré et que l'URL est correcte.",
+      "timeout": "L'addon AirSend ne répond pas (timeout). Vérifiez que l'addon est démarré.",
+      "no_url": "Veuillez saisir l'URL interne de l'addon AirSend."
+    },
+    "abort": {
+      "already_configured": "AirSend est déjà configuré.",
+      "reconfigure_successful": "Reconfiguration réussie."
+    }
+  }
+}
