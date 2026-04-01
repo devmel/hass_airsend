@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.const import CONF_INTERNAL_URL
 
 from . import DOMAIN
@@ -28,7 +29,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class AirSendSwitch(SwitchEntity):
+class AirSendSwitch(RestoreEntity, SwitchEntity):
     """Representation of an AirSend Switch."""
 
     def __init__(self, hass: HomeAssistant, device: Device) -> None:
@@ -90,4 +91,13 @@ class AirSendSwitch(SwitchEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         if await self._send({"method": 1, "type": 0, "value": "OFF"}):
             self._state = False
+            self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Restore last known state when added to hass."""
+        await super().async_added_to_hass()
+        
+        last_state = await self.async_get_last_state()
+        if last_state:
+            self._state = last_state.state == 'on'
             self.async_write_ha_state()

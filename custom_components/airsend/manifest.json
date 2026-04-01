@@ -2,10 +2,11 @@
   "domain": "airsend",
   "name": "AirSend",
   "documentation": "https://github.com/devmel/hass_airsend",
+  "issue_tracker": "https://github.com/devmel/hass_airsend/issues",
   "dependencies": ["http"],
   "config_flow": true,
   "codeowners": ["@devmel"],
   "requirements": [],
-  "version": "4.0",
+  "version": "4.0.0",
   "iot_class": "local_push"
 }

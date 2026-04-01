@@ -6,6 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo, generate_entity_id
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.const import CONF_INTERNAL_URL, UnitOfTemperature, LIGHT_LUX
 
@@ -51,7 +52,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class AirSendAnySensor(SensorEntity):
+class AirSendAnySensor(RestoreEntity, SensorEntity):
     """Generic AirSend sensor (type 1) — no coordinator, push only."""
 
     def __init__(self, hass: HomeAssistant, device: Device, internal_url: str) -> None:
@@ -82,6 +83,18 @@ class AirSendAnySensor(SensorEntity):
     @property
     def device_info(self) -> DeviceInfo:
         return self._device.device_info
+
+    @property
+    def native_value(self):
+        return self._state
+
+    async def async_added_to_hass(self) -> None:
+        """Restore last known state when added to hass."""
+        await super().async_added_to_hass()
+        last_state = await self.async_get_last_state()
+        if last_state is not None:
+            self._state = last_state.state
+            self.async_write_ha_state()
 
 
 class AirSendTempSensor(CoordinatorEntity, SensorEntity):

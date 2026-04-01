@@ -13,8 +13,9 @@ RTYPE_LABELS = {
     4096: "AirSend Button",
     4097: "AirSend Switch",
     4098: "AirSend Cover",
-    4099: "AirSend Cover (position)",
-    4100: "AirSend Light",
+    4099: "AirSend Slider",
+    4100: "AirSend Tilt",
+    4101: "AirSend Light",
 }
 
 
@@ -90,7 +91,7 @@ class Device:
         if self._channel:
             result = str(self._channel['id'])
             if result:
-                uniquefield = ['source', 'mac', 'seed']
+                uniquefield = ['source', 'mac', 'seed', 'token']
                 for field in uniquefield:
                     if field in self._channel:
                         result += "_"
@@ -145,7 +146,7 @@ class Device:
 
     @property
     def is_light(self) -> bool:
-        return self._rtype == 4100
+        return self._rtype == 4101
 
     @property
     def refresh_value(self) -> int:

@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.const import CONF_INTERNAL_URL
 
 from . import DOMAIN
@@ -29,7 +30,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class AirSendCover(CoverEntity):
+class AirSendCover(RestoreEntity, CoverEntity):
     """Representation of an AirSend Cover."""
 
     def __init__(self, hass: HomeAssistant, device: Device) -> None:
@@ -117,3 +118,31 @@ class AirSendCover(CoverEntity):
             self._attr_current_cover_position = position
             self._closed = position == 0
             self.async_write_ha_state()
+
+    async def async_added_to_hass(self):
+        """Restore last known state when added to hass."""
+        await super().async_added_to_hass()
+        
+        # Get the last known state
+        last_state = await self.async_get_last_state()
+        
+        if last_state:
+            # Restore position for covers with position support (type 4099)
+            if self._device.is_cover_with_position:
+                # Try to restore position from attributes
+                if last_state.attributes.get('current_position') is not None:
+                    self._attr_current_cover_position = last_state.attributes['current_position']
+                
+                # Override position based on state if fully open/closed
+                if last_state.state == 'closed':
+                    self._attr_current_cover_position = 0
+                elif last_state.state == 'open':
+                    self._attr_current_cover_position = 100
+            
+            # Restore closed/open state for all covers
+            if last_state.state == 'closed':
+                self._closed = True
+            elif last_state.state == 'open':
+                self._closed = False
+            self.async_write_ha_state()
+        # If no last_state, keep the defaults (50% for position covers)

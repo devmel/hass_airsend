@@ -49,6 +49,11 @@ Component for sending radio commands through the AirSend (RF433) or AirSend duo 
    - Restart Home Assistant.
    - Restart the AirSend addon.
 
+6. **Configure the Integration**:
+   - Navigate to Settings -> Devices & services -> + Add Integration.
+   - Search for and select AirSend.
+   - Select the rooms associated with your devices to complete the setup.
+
 These steps will integrate AirSend with Home Assistant, allowing you to manage and automate AirSend-related tasks through the Home Assistant interface.
 
 
