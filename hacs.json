@@ -1,5 +1,5 @@
 {
   "name": "AirSend",
   "render_readme": true,
-  "iot_class": "Cloud Polling"
+  "content_in_root": false
 }
