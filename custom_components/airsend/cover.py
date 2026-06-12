@@ -60,7 +60,10 @@ class AirSendCover(RestoreEntity, CoverEntity):
 
     @property
     def extra_state_attributes(self):
-        return self._device.extra_state_attributes
+        attrs = self._device.extra_state_attributes or {}
+        if self._device.is_inverted:
+            attrs = {**attrs, "inverted": True}
+        return attrs or None
 
     @property
     def assumed_state(self):
@@ -75,7 +78,9 @@ class AirSendCover(RestoreEntity, CoverEntity):
         if self._device.is_async and self._hass:
             component = self._hass.states.get(self.entity_id)
             if component is not None:
-                self._closed = component.state not in ('open', 'on', 'up')
+                is_open_state = component.state not in ('open', 'on', 'up')
+                # Invert the closed logic if needed
+                self._closed = not is_open_state if self._device.is_inverted else is_open_state
         return self._closed
 
     async def async_added_to_hass(self):
@@ -105,17 +110,25 @@ class AirSendCover(RestoreEntity, CoverEntity):
             self.async_write_ha_state()
         return result in (TransferResult.SUCCESS, TransferResult.SENT)
 
+    def _up_note(self) -> dict:
+        """Return UP note, inverted if needed."""
+        value = "DOWN" if self._device.is_inverted else "UP"
+        return {"method": 1, "type": 0, "value": value}
+
+    def _down_note(self) -> dict:
+        """Return DOWN note, inverted if needed."""
+        value = "UP" if self._device.is_inverted else "DOWN"
+        return {"method": 1, "type": 0, "value": value}
+
     async def async_open_cover(self, **kwargs: Any) -> None:
-        note = {"method": 1, "type": 0, "value": "UP"}
-        if await self._send(note):
+        if await self._send(self._up_note()):
             self._closed = False
             if self._device.is_cover_with_position:
                 self._attr_current_cover_position = 100
             self.async_write_ha_state()
 
     async def async_close_cover(self, **kwargs: Any) -> None:
-        note = {"method": 1, "type": 0, "value": "DOWN"}
-        if await self._send(note):
+        if await self._send(self._down_note()):
             self._closed = True
             if self._device.is_cover_with_position:
                 self._attr_current_cover_position = 0
@@ -131,7 +144,9 @@ class AirSendCover(RestoreEntity, CoverEntity):
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         position = int(kwargs["position"])
-        note = {"method": 1, "type": 9, "value": position}
+        # Invert position value if needed
+        actual_position = (100 - position) if self._device.is_inverted else position
+        note = {"method": 1, "type": 9, "value": actual_position}
         if await self._send(note):
             self._attr_current_cover_position = position
             self._closed = position == 0
