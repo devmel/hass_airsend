@@ -88,6 +88,10 @@ class Device:
             self._refresh = int(options["refresh"])
         except KeyError:
             pass
+        try:
+            self._invert = bool(options["invert"])
+        except KeyError:
+            self._invert = False
 
     @property
     def name(self) -> str:
@@ -157,6 +161,11 @@ class Device:
     @property
     def is_light(self) -> bool:
         return self._rtype == 4100
+
+    @property
+    def is_inverted(self) -> bool:
+        """Return True if open/close logic is inverted."""
+        return self._invert
 
     @property
     def refresh_value(self) -> int:
