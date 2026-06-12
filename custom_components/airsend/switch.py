@@ -1,7 +1,7 @@
 """AirSend switches."""
 from typing import Any
 
-from .device import Device
+from .device import Device, TransferResult
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
@@ -75,13 +75,21 @@ class AirSendSwitch(RestoreEntity, SwitchEntity):
                 self._state = component.state == 'on'
         return self._state
 
+    async def async_added_to_hass(self):
+        """Restore last known state when added to hass."""
+        await super().async_added_to_hass()
+        last_state = await self.async_get_last_state()
+        if last_state and last_state.state not in ('unavailable', 'unknown'):
+            self._state = last_state.state == 'on'
+        self.async_write_ha_state()
+
     async def _send(self, note: dict) -> bool:
         result = await self._device.async_transfer(note, self.entity_id)
-        available = result is not False
+        available = result != TransferResult.NETWORK_ERROR
         if self._available != available:
             self._available = available
             self.async_write_ha_state()
-        return result is not False
+        return result in (TransferResult.SUCCESS, TransferResult.SENT)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         if await self._send({"method": 1, "type": 0, "value": "ON"}):
@@ -91,13 +99,4 @@ class AirSendSwitch(RestoreEntity, SwitchEntity):
     async def async_turn_off(self, **kwargs: Any) -> None:
         if await self._send({"method": 1, "type": 0, "value": "OFF"}):
             self._state = False
-            self.async_write_ha_state()
-
-    async def async_added_to_hass(self) -> None:
-        """Restore last known state when added to hass."""
-        await super().async_added_to_hass()
-        
-        last_state = await self.async_get_last_state()
-        if last_state:
-            self._state = last_state.state == 'on'
             self.async_write_ha_state()

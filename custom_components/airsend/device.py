@@ -13,10 +13,20 @@ RTYPE_LABELS = {
     4096: "AirSend Button",
     4097: "AirSend Switch",
     4098: "AirSend Cover",
-    4099: "AirSend Slider",
-    4100: "AirSend Tilt",
-    4101: "AirSend Light",
+    4099: "AirSend Cover (position)",
+    4100: "AirSend Light",
 }
+
+
+from enum import Enum
+
+
+class TransferResult(Enum):
+    """Result of an async_transfer call."""
+    SUCCESS = "success"          # Command sent and confirmed
+    SENT = "sent"                # Command sent, no confirmation (wait=True + 500)
+    SERVER_ERROR = "server_error" # Server responded with error (command may have been sent)
+    NETWORK_ERROR = "network_error" # Addon unreachable (timeout, connection refused)
 
 
 class Device:
@@ -91,7 +101,7 @@ class Device:
         if self._channel:
             result = str(self._channel['id'])
             if result:
-                uniquefield = ['source', 'mac', 'seed', 'token']
+                uniquefield = ['source', 'mac', 'seed']
                 for field in uniquefield:
                     if field in self._channel:
                         result += "_"
@@ -146,7 +156,7 @@ class Device:
 
     @property
     def is_light(self) -> bool:
-        return self._rtype == 4101
+        return self._rtype == 4100
 
     @property
     def refresh_value(self) -> int:
@@ -182,7 +192,7 @@ class Device:
             _LOGGER.debug("Bind error '%s': %s", self._name, err)
             return False
 
-    async def async_transfer(self, note, entity_id=None) -> bool:
+    async def async_transfer(self, note, entity_id=None) -> "TransferResult":
         """Send a command (async)."""
         status_code = 404
         ret = False
@@ -236,6 +246,7 @@ class Device:
                             status_code = response.status
             except aiohttp.ClientError as err:
                 _LOGGER.debug("Transfer local error '%s': %s", self._name, err)
+                return TransferResult.NETWORK_ERROR
 
         # Fallback to cloud API if local failed
         if status_code != 200 and self._apikey:
@@ -269,13 +280,22 @@ class Device:
                         status_code = response.status
                         ret = True
             except aiohttp.ClientError as err:
-                _LOGGER.debug("Transfer cloud error '%s': %s", self._name, err)
+                _LOGGER.warning("Transfer cloud error '%s': %s — both local and cloud failed", self._name, err)
+                return TransferResult.NETWORK_ERROR
 
         if status_code == 200:
-            return ret
-        # 500 with wait=True means RF confirmation not received but command was sent
-        if status_code == 500 and self._wait:
-            _LOGGER.warning("Transfer '%s' : no RF confirmation (500), command may have been sent", self.name)
-            return True
-        _LOGGER.error("Transfer error '%s' : '%s'", self.name, status_code)
-        return False
+            return TransferResult.SUCCESS
+        if status_code == 401:
+            _LOGGER.error("Transfer '%s' : invalid locator (401) — check spurl in airsend.yaml", self.name)
+            return TransferResult.SERVER_ERROR
+        if status_code == 405:
+            _LOGGER.error("Transfer '%s' : invalid input (405) — check channel configuration", self.name)
+            return TransferResult.SERVER_ERROR
+        if status_code == 500:
+            if self._wait:
+                _LOGGER.warning("Transfer '%s' : no RF confirmation (500), command may have been sent", self.name)
+                return TransferResult.SENT
+            _LOGGER.warning("Transfer '%s' : server error (500), command may have been sent", self.name)
+            return TransferResult.SERVER_ERROR
+        _LOGGER.warning("Transfer '%s' : unexpected status %s", self.name, status_code)
+        return TransferResult.SERVER_ERROR
