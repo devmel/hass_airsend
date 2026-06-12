@@ -45,6 +45,7 @@ devices:
   Volet salon:
     id: 12345
     type: 4098
+    invert: true      # add this option for covers where open/close logic is reversed (e.g. shade sails, projector screens)
     apiKey: !secret apiKey
     spurl: !secret spurl
     channel:
