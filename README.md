@@ -67,16 +67,18 @@ devices:
 
 ### Manual installation (until the repository is available in HACS)
 
-1. Download the latest release from [GitHub releases](https://github.com/devmel/hass_airsend/releases).
-2. Copy the `custom_components/airsend` directory into your `custom_components` folder.
-3. Restart Home Assistant.
-4. Go to **Settings → Integrations → Add integration** and search for `AirSend`.
+
+1. In HACS, go to **Integrations** → click the three-dot menu → **Custom repositories**.
+2. Add the repository URL: `https://github.com/devmel/hass_airsend` and select **Integration** as the category.
+3. Search for **AirSend** in HACS and click **Install**.
+4. **Restart** Home Assistant.
+5. Go to **Settings → Integrations → Add integration** and search for `AirSend`.
 
 ### HACS (recommended)
 
 1. Ensure [HACS](https://hacs.xyz) is installed.
 2. Search for `AirSend` in HACS and install it, or use the button below.
-3. Restart Home Assistant.
+3. **Restart** Home Assistant.
 4. Go to **Settings → Integrations → Add integration** and search for `AirSend`.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Devmel&repository=hass_airsend)
@@ -102,6 +104,7 @@ To reload devices after modifying `airsend.yaml`, use the **Reconfigure** option
 | `sensors` | Enable temperature and illuminance sensors for AirSend box (`true`/`false`) |
 | `bind` | Channel ID to bind for incoming RF messages |
 | `refresh` | Poll interval in seconds (default: 300) |
+| `invert` | Give possibility to reverse command UP/DOWN as DOWN/UP |
 
 ## Informations
 
