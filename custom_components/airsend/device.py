@@ -2,13 +2,14 @@
 import logging
 import json
 import hashlib
+import re
 import aiohttp
 from . import DOMAIN
 
 _LOGGER = logging.getLogger(DOMAIN)
 
 RTYPE_LABELS = {
-    0: "AirSend",
+    0: "AirSend Box",
     1: "AirSend Sensor",
     4096: "AirSend Button",
     4097: "AirSend Switch",
@@ -93,6 +94,39 @@ class Device:
         except KeyError:
             self._invert = False
 
+        # MAC and local IP — only for AirSend Box (type 0)
+        # MAC derived from EUI-64 link-local IPv6 in spurl: sp://TOKEN@[fe80::xxxx]?gw=0&rhost=192.168.x.x
+        self._mac = None
+        self._local_ip = None
+        if self._rtype == 0 and self._spurl:
+            try:
+                ipv6_match = re.search(r'@\[([^\]]+)\]', self._spurl)
+                if ipv6_match:
+                    self._mac = self._ipv6_link_local_to_mac(ipv6_match.group(1))
+                rhost_match = re.search(r'rhost=([^&]+)', self._spurl)
+                if rhost_match:
+                    self._local_ip = rhost_match.group(1)
+            except Exception:
+                pass
+
+    @staticmethod
+    def _ipv6_link_local_to_mac(ipv6_str: str) -> str:
+        """Convert a fe80:: EUI-64 link-local IPv6 address to a MAC address."""
+        ipv6_str = ipv6_str.lower().strip()
+        if '::' in ipv6_str:
+            left, right = ipv6_str.split('::')
+            left_groups = left.split(':') if left else []
+            right_groups = right.split(':') if right else []
+            missing = 8 - len(left_groups) - len(right_groups)
+            groups = left_groups + ['0'] * missing + right_groups
+        else:
+            groups = ipv6_str.split(':')
+        groups = [g.zfill(4) for g in groups]
+        eui64 = ''.join(groups[4:])
+        b = [int(eui64[i:i+2], 16) for i in range(0, 16, 2)]
+        mac_bytes = [b[0] ^ 0x02, b[1], b[2], b[5], b[6], b[7]]
+        return ':'.join(f'{x:02X}' for x in mac_bytes)
+
     @property
     def name(self) -> str:
         """Return the name."""
@@ -116,12 +150,24 @@ class Device:
     @property
     def device_info(self) -> dict:
         """Return device info for Home Assistant device registry."""
-        return {
+        from homeassistant.helpers import device_registry as dr
+
+        connections = set()
+        if self._mac:
+            connections.add((dr.CONNECTION_NETWORK_MAC, self._mac))
+
+        info = {
             "identifiers": {(DOMAIN, self.unique_channel_name)},
             "name": self._name,
             "manufacturer": "AirSend",
             "model": RTYPE_LABELS.get(self._rtype, "AirSend"),
         }
+        if connections:
+            info["connections"] = connections
+        info["configuration_url"] = "https://app.airsend.cloud/"
+        if self._local_ip:
+            info["hw_version"] = f"IP: {self._local_ip}"
+        return info
 
     @property
     def extra_state_attributes(self):
