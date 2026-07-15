@@ -27,7 +27,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(DOMAIN, {})
 
-    internal_url = entry.data.get(CONF_INTERNAL_URL, "")
+    detected_url = await get_internal_url(hass)
+
+    if detected_url:
+        internal_url = detected_url
+
+        if detected_url != entry.data.get(CONF_INTERNAL_URL):
+            hass.config_entries.async_update_entry(
+                entry,
+                data={
+                    **entry.data,
+                    CONF_INTERNAL_URL: detected_url,
+                },
+            )
+    else:
+        internal_url = entry.data.get(CONF_INTERNAL_URL, "")
+
     devices_config = entry.data.get("devices", {})
 
     coordinators = {}
@@ -37,7 +52,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinators[name] = coordinator
 
     hass.data[DOMAIN][entry.entry_id] = {
-        "entry": entry.data,
+        "entry": {
+            **entry.data,
+            CONF_INTERNAL_URL: internal_url,
+        },
         "coordinators": coordinators,
     }
 
