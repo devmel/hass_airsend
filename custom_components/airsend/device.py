@@ -18,6 +18,23 @@ RTYPE_LABELS = {
     4100: "AirSend Light",
 }
 
+# Device types sharing the same entity platform, and therefore the same
+# unique_id namespace (4098 and 4099 are both covers).
+PLATFORM_KEYS = {
+    0: "box",
+    1: "sensor",
+    4096: "button",
+    4097: "switch",
+    4098: "cover",
+    4099: "cover",
+    4100: "light",
+}
+
+
+def _digest(value: str) -> str:
+    """Return a short, stable digest of a string."""
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:8]
+
 
 from enum import Enum
 
@@ -42,6 +59,7 @@ class Device:
         """Initialize a device."""
         self._name = name
         self._serviceurl = serviceurl
+        self._entity_discriminator = None
         self._uid = None
         self._rtype = None
         self._apikey = None
@@ -146,6 +164,27 @@ class Device:
                         result += str(self._channel[field])
             return result
         return self._name
+
+    @property
+    def entity_group_key(self) -> tuple:
+        """Key shared by the entries that would derive the same unique_id."""
+        return (self.unique_channel_name, PLATFORM_KEYS.get(self._rtype, self._rtype))
+
+    @property
+    def note_digest(self) -> str:
+        """Return a short digest of the note block, if any."""
+        return _digest(json.dumps(self._note, sort_keys=True, separators=(",", ":")))
+
+    def set_entity_discriminator(self, value: str) -> None:
+        """Set the suffix telling this entry apart from others on its channel."""
+        self._entity_discriminator = value
+
+    @property
+    def unique_entity_name(self) -> str:
+        """Channel name, suffixed when several entries share that channel."""
+        if self._entity_discriminator:
+            return self.unique_channel_name + "_" + self._entity_discriminator
+        return self.unique_channel_name
 
     @property
     def device_info(self) -> dict:
@@ -354,3 +393,35 @@ class Device:
             return TransferResult.SERVER_ERROR
         _LOGGER.warning("Transfer '%s' : unexpected status %s", self.name, status_code)
         return TransferResult.SERVER_ERROR
+
+
+def build_devices(devices_config: dict, serviceurl: str) -> list["Device"]:
+    """Build the devices of a config entry, disambiguating shared channels.
+
+    Several entries may legitimately target the same RF channel with a
+    different ``note``, e.g. the positions of a multi-button remote. They only
+    differ by that note, so they would all derive the same unique_id and Home
+    Assistant would keep the first one and drop the others. Give every member
+    of such a group a discriminator; lone entries are left untouched so their
+    existing unique_id is preserved.
+    """
+    devices = [
+        Device(name, options, serviceurl) for name, options in devices_config.items()
+    ]
+
+    groups: dict[tuple, list[Device]] = {}
+    for device in devices:
+        groups.setdefault(device.entity_group_key, []).append(device)
+
+    for group in groups.values():
+        if len(group) < 2:
+            continue
+        digests = [device.note_digest for device in group]
+        for device, digest in zip(group, digests):
+            if digests.count(digest) > 1:
+                # Same channel and same note: only the YAML key tells them
+                # apart, and it is unique by construction.
+                digest = _digest(device.name)
+            device.set_entity_discriminator(digest)
+
+    return devices

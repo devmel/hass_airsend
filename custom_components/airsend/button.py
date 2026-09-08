@@ -1,7 +1,7 @@
 """AirSend buttons."""
 from typing import Any
 
-from .device import Device
+from .device import Device, build_devices
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
@@ -21,8 +21,7 @@ async def async_setup_entry(
     internal_url = entry.data.get(CONF_INTERNAL_URL, "")
     devices_config = entry.data.get("devices", {})
     entities = []
-    for name, options in devices_config.items():
-        device = Device(name, options, internal_url)
+    for device in build_devices(devices_config, internal_url):
         if device.is_button:
             entities.append(AirSendButton(hass, device))
     async_add_entities(entities)
@@ -33,7 +32,7 @@ class AirSendButton(ButtonEntity):
 
     def __init__(self, hass: HomeAssistant, device: Device) -> None:
         self._device = device
-        self._unique_id = DOMAIN + "_" + str(device.unique_channel_name) + "_button"
+        self._unique_id = DOMAIN + "_" + str(device.unique_entity_name) + "_button"
         self._available = True
 
     @property

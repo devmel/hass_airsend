@@ -18,7 +18,7 @@ class AirSendCoordinator(DataUpdateCoordinator):
         super().__init__(
             hass,
             _LOGGER,
-            name=f"{DOMAIN}_{device.unique_channel_name}",
+            name=f"{DOMAIN}_{device.unique_entity_name}",
             update_interval=timedelta(seconds=device.refresh_value),
         )
         self._device = device
@@ -43,7 +43,7 @@ class AirSendCoordinator(DataUpdateCoordinator):
             try:
                 await self._device.async_transfer(
                     {"method": "QUERY", "type": "STATE"},
-                    f"coordinator_{self._device.unique_channel_name}",
+                    f"coordinator_{self._device.unique_entity_name}",
                 )
                 await self._device.async_bind()
                 data["available"] = True
@@ -56,11 +56,11 @@ class AirSendCoordinator(DataUpdateCoordinator):
             try:
                 await self._device.async_transfer(
                     {"method": "QUERY", "type": "TEMPERATURE"},
-                    f"coordinator_{self._device.unique_channel_name}_temp",
+                    f"coordinator_{self._device.unique_entity_name}_temp",
                 )
                 await self._device.async_transfer(
                     {"method": "QUERY", "type": "ILLUMINANCE"},
-                    f"coordinator_{self._device.unique_channel_name}_ill",
+                    f"coordinator_{self._device.unique_entity_name}_ill",
                 )
             except Exception as err:
                 _LOGGER.warning("Sensor query failed for %s: %s", self._device.name, err)
