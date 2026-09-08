@@ -57,7 +57,7 @@ class AirSendAnySensor(RestoreEntity, SensorEntity):
 
     def __init__(self, hass: HomeAssistant, device: Device, internal_url: str) -> None:
         self._device = device
-        self._unique_id = DOMAIN + "_" + str(device.unique_channel_name) + "_sensor"
+        self._unique_id = DOMAIN + "_" + str(device.unique_entity_name) + "_sensor"
         self.entity_id = generate_entity_id("sensor.{}", device.unique_channel_name, hass=hass)
 
     @property
@@ -102,7 +102,7 @@ class AirSendTempSensor(CoordinatorEntity, SensorEntity):
 
     def __init__(self, coordinator: AirSendCoordinator) -> None:
         super().__init__(coordinator)
-        self._unique_id = DOMAIN + "_" + str(coordinator.device.unique_channel_name) + "_temp"
+        self._unique_id = DOMAIN + "_" + str(coordinator.device.unique_entity_name) + "_temp"
 
     @property
     def unique_id(self):
@@ -138,7 +138,7 @@ class AirSendIllSensor(CoordinatorEntity, SensorEntity):
 
     def __init__(self, coordinator: AirSendCoordinator) -> None:
         super().__init__(coordinator)
-        self._unique_id = DOMAIN + "_" + str(coordinator.device.unique_channel_name) + "_ill"
+        self._unique_id = DOMAIN + "_" + str(coordinator.device.unique_entity_name) + "_ill"
 
     @property
     def unique_id(self):

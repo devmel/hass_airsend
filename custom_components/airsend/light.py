@@ -1,7 +1,7 @@
 """AirSend lights (dimmable)."""
 from typing import Any
 
-from .device import Device, TransferResult
+from .device import Device, TransferResult, build_devices
 
 from homeassistant.components.light import LightEntity, ATTR_BRIGHTNESS, ColorMode
 from homeassistant.config_entries import ConfigEntry
@@ -23,8 +23,7 @@ async def async_setup_entry(
     internal_url = entry.data.get(CONF_INTERNAL_URL, "")
     devices_config = entry.data.get("devices", {})
     entities = []
-    for name, options in devices_config.items():
-        device = Device(name, options, internal_url)
+    for device in build_devices(devices_config, internal_url):
         if device.is_light:
             entities.append(AirSendLight(hass, device))
     async_add_entities(entities)
@@ -39,7 +38,7 @@ class AirSendLight(RestoreEntity, LightEntity):
     def __init__(self, hass: HomeAssistant, device: Device) -> None:
         self._hass = hass
         self._device = device
-        self._unique_id = DOMAIN + "_" + str(device.unique_channel_name) + "_light"
+        self._unique_id = DOMAIN + "_" + str(device.unique_entity_name) + "_light"
         self._available = True
         self._is_on = False
         self._brightness = 255

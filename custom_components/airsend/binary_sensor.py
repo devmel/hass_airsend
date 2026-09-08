@@ -34,7 +34,7 @@ class AirSendStateSensor(CoordinatorEntity, BinarySensorEntity):
 
     def __init__(self, coordinator: AirSendCoordinator) -> None:
         super().__init__(coordinator)
-        self._unique_id = DOMAIN + "_" + str(coordinator.device.unique_channel_name) + "_state"
+        self._unique_id = DOMAIN + "_" + str(coordinator.device.unique_entity_name) + "_state"
 
     @property
     def unique_id(self):

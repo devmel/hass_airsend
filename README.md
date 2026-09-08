@@ -105,6 +105,42 @@ To reload devices after modifying `airsend.yaml`, use the **Reconfigure** option
 | `bind` | Channel ID to bind for incoming RF messages |
 | `refresh` | Poll interval in seconds (default: 300) |
 | `invert` | Give possibility to reverse command UP/DOWN as DOWN/UP |
+| `note` | Raw RF payload to send (`method`, `type`, `value`, `value_binsize`) instead of the default command |
+
+### Several commands on one channel
+
+A single RF channel often carries more than one command — a pergola remote with
+partial-open positions, for example. Declare one entry per command, all sharing
+the same `channel`, each with its own `note`:
+
+```yaml
+devices:
+  Chiudi pergola:
+    type: 4096
+    spurl: !secret spurl
+    channel:
+      id: 25712
+      source: 45409
+    note:
+      method: 1
+      type: 0
+      value: 18
+
+  Apri pergola completamente:
+    type: 4096
+    spurl: !secret spurl
+    channel:
+      id: 25712
+      source: 45409
+    note:
+      method: 1
+      type: 1
+      value: 4
+      value_binsize: 3
+```
+
+Each entry becomes its own entity, and they are grouped under the single Home
+Assistant device representing the channel.
 
 ## Informations
 

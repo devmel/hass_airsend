@@ -23,7 +23,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up AirSend from a config entry."""
     from .coordinator import AirSendCoordinator
-    from .device import Device
+    from .device import build_devices
 
     hass.data.setdefault(DOMAIN, {})
 
@@ -46,10 +46,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     devices_config = entry.data.get("devices", {})
 
     coordinators = {}
-    for name, options in devices_config.items():
-        device = Device(name, options, internal_url)
-        coordinator = AirSendCoordinator(hass, device)
-        coordinators[name] = coordinator
+    for device in build_devices(devices_config, internal_url):
+        coordinators[device.name] = AirSendCoordinator(hass, device)
 
     hass.data[DOMAIN][entry.entry_id] = {
         "entry": {
