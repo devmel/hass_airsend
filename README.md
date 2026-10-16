@@ -103,7 +103,7 @@ To reload devices after modifying `airsend.yaml`, use the **Reconfigure** option
 | `wait` | Wait for RF confirmation before returning (`true`/`false`) |
 | `sensors` | Enable temperature and illuminance sensors for AirSend box (`true`/`false`) |
 | `bind` | Channel ID to bind for incoming RF messages |
-| `refresh` | Poll interval in seconds (default: 300) |
+| `refresh` | Poll interval in seconds (default: 300). Covers also use it to re-check reachability, and retry every 30 s while the bridge looks down so entities recover on their own |
 | `invert` | Give possibility to reverse command UP/DOWN as DOWN/UP |
 
 ## Informations
