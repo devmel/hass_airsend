@@ -1,7 +1,8 @@
 """AirSend covers."""
 from typing import Any
 
-from .device import Device, TransferResult
+from .device import TransferResult
+from .coordinator import AirSendCoordinator
 
 from homeassistant.components.cover import CoverEntity
 from homeassistant.config_entries import ConfigEntry
@@ -9,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.const import CONF_INTERNAL_URL
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import DOMAIN
 
@@ -20,26 +21,26 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up AirSend covers from a config entry."""
-    internal_url = entry.data.get(CONF_INTERNAL_URL, "")
-    devices_config = entry.data.get("devices", {})
+    coordinators: dict[str, AirSendCoordinator] = (
+        hass.data[DOMAIN][entry.entry_id]["coordinators"]
+    )
     entities = []
-    for name, options in devices_config.items():
-        device = Device(name, options, internal_url)
-        if device.is_cover:
-            entities.append(AirSendCover(hass, device))
+    for coordinator in coordinators.values():
+        if coordinator.device.is_cover:
+            entities.append(AirSendCover(hass, coordinator))
     async_add_entities(entities)
 
 
-class AirSendCover(RestoreEntity, CoverEntity):
+class AirSendCover(CoordinatorEntity, RestoreEntity, CoverEntity):
     """Representation of an AirSend Cover."""
 
-    def __init__(self, hass: HomeAssistant, device: Device) -> None:
+    def __init__(self, hass: HomeAssistant, coordinator: AirSendCoordinator) -> None:
+        super().__init__(coordinator)
         self._hass = hass
-        self._device = device
-        self._unique_id = DOMAIN + "_" + str(device.unique_channel_name) + "_cover"
+        self._device = coordinator.device
+        self._unique_id = DOMAIN + "_" + str(coordinator.device.unique_channel_name) + "_cover"
         self._closed = None
-        self._available = True
-        if device.is_cover_with_position:
+        if coordinator.device.is_cover_with_position:
             self._attr_current_cover_position = 50
 
     @property
@@ -48,7 +49,7 @@ class AirSendCover(RestoreEntity, CoverEntity):
 
     @property
     def available(self):
-        return self._available
+        return self.coordinator.data.get("available", True)
 
     @property
     def should_poll(self):
@@ -100,14 +101,19 @@ class AirSendCover(RestoreEntity, CoverEntity):
             elif last_state.state == 'open':
                 self._closed = False
         self.async_write_ha_state()
+        # Validate reachability right after startup (bridge may still be
+        # coming up after a host/VM restart) instead of waiting one interval
+        await self.coordinator.async_request_refresh()
 
     async def _send(self, note: dict) -> bool:
         """Send a command and update availability accordingly."""
         result = await self._device.async_transfer(note, self.entity_id)
         available = result != TransferResult.NETWORK_ERROR
-        if self._available != available:
-            self._available = available
-            self.async_write_ha_state()
+        if available != self.coordinator.data.get("available", True):
+            self.coordinator.async_set_available(available)
+        if not available:
+            # Confirm reachability right away instead of waiting for the next probe
+            await self.coordinator.async_request_refresh()
         return result in (TransferResult.SUCCESS, TransferResult.SENT)
 
     def _up_note(self) -> dict:
